@@ -41,8 +41,9 @@ export type CandidaturaRow = {
   data: string;
   empresa: string;
   titulo: string;
-  canal: "email" | "formulario";
-  status: StatusCand;
+  // "" means an unrecognized hand-edited value in the sheet
+  canal: "email" | "formulario" | "";
+  status: StatusCand | "";
   idRascunho: string;
   idThread: string;
   followupEm: string;
