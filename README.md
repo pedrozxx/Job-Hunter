@@ -38,7 +38,7 @@ npm run typecheck
 Como o Gmail é pessoal, não dá para usar conta de serviço. O caminho é OAuth.
 
 1. No Google Cloud Console, crie um projeto e ative as APIs do Gmail, do Google Sheets e do Google Drive.
-2. Em "Tela de consentimento OAuth", deixe o app em modo de teste e adicione o seu próprio e-mail como usuário de teste.
+2. Em "Tela de consentimento OAuth", preencha o básico (nome do app e seu e-mail de contato) e clique em "Publicar app", até o status ficar "Em produção". Não precisa de verificação do Google para uso pessoal. Não deixe em "Testando", porque nesse modo o refresh token expira em 7 dias.
 3. Em "Credenciais", crie um ID do cliente OAuth do tipo "App para computador". Guarde o client id e o client secret.
 
 O token gerado vale para os escopos `gmail.readonly`, `gmail.compose`, `spreadsheets` e `drive.readonly`. Nenhum deles envia e-mail sozinho: o `gmail.compose` cria rascunhos.
@@ -51,9 +51,9 @@ Rode uma vez, na sua máquina:
 GOOGLE_CLIENT_ID=... GOOGLE_CLIENT_SECRET=... npx tsx scripts/google-auth.ts
 ```
 
-O script abre um servidor local na porta 53682 e imprime uma URL de autorização. Abra no navegador, autorize, e o terminal mostra uma linha `GOOGLE_REFRESH_TOKEN=...`. Esse valor vai para os secrets. Se o Google não devolver o refresh token, revogue o acesso do app na sua conta Google e rode de novo.
+O script abre um servidor local na porta 53682 e imprime uma URL de autorização. Abra no navegador. Na primeira autorização o Google mostra "app não verificado": clique em "Avançado" e continue, já que só você usa o app. Autorize, e o terminal mostra uma linha `GOOGLE_REFRESH_TOKEN=...`. Esse valor vai para os secrets. Se o Google não devolver o refresh token, revogue o acesso do app na sua conta Google e rode de novo.
 
-Com o app em modo de teste, o Google costuma expirar o refresh token depois de 7 dias. Se os jobs começarem a falhar com erro de autenticação, gere o token de novo e atualize o secret.
+O refresh token de um app em produção não tem a expiração de 7 dias. Se o app ficar em "Testando", o token expira e os jobs começam a falhar com `invalid_grant`. Nesse caso, publique o app, gere o token de novo e atualize o secret `GOOGLE_REFRESH_TOKEN`.
 
 ## 3. Criar a planilha
 
