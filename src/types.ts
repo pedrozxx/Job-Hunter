@@ -23,7 +23,7 @@ export type Pontuacao = {
 
 export type Decisao = "aprovar" | "descartar" | "";
 
-export type StatusFila = "novo" | "semana cheia" | "aguardando semana" | "escrever manualmente" | "processada";
+export type StatusFila = "novo" | "semana cheia" | "aguardando semana" | "escrever manualmente" | "enviando" | "processada";
 
 export type FilaRow = Vaga & Partial<Pontuacao> & { mensagem: string; decisao: Decisao; status: StatusFila };
 

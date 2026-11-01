@@ -40,20 +40,24 @@ class RepoFalso implements SheetsRepo {
   logs: LogRow[] = [];
   ordem: string[] = [];
   falhaAtualizarFila = false;
+  falhaAdicionarCand = 0;
+  falhaAtualizarCand?: (p: Partial<CandidaturaRow>) => boolean;
   constructor(public fila: FilaRow[] = [], public cands: CandidaturaRow[] = []) {}
   async lerFila() { return structuredClone(this.fila); }
   async adicionarFila() {}
   async atualizarFila(id: string, p: Partial<FilaRow>) {
-    if (this.falhaAtualizarFila) throw new Error("sheets caiu");
+    if (this.falhaAtualizarFila && p.status === "processada") throw new Error("sheets caiu");
     this.ordem.push(`fila:${id}`);
     Object.assign(this.fila.find((r) => r.id === id)!, p);
   }
   async lerCandidaturas() { return structuredClone(this.cands); }
   async adicionarCandidatura(r: CandidaturaRow) {
+    if (this.falhaAdicionarCand-- > 0) throw new Error("append falhou");
     this.ordem.push(`cand:${r.id}`);
     this.cands.push(r);
   }
   async atualizarCandidatura(id: string, p: Partial<CandidaturaRow>) {
+    if (this.falhaAtualizarCand?.(p)) throw new Error("update falhou");
     Object.assign(this.cands.find((c) => c.id === id)!, p);
   }
   async log(r: LogRow) { this.logs.push(r); }
@@ -140,13 +144,52 @@ describe("runSend: novas aprovacoes", () => {
     const { gmail, repo, run } = setup([fila("a")]);
     repo.falhaAtualizarFila = true;
     await run();
-    expect(repo.ordem).toEqual(["cand:a"]);
+    expect(repo.ordem).toEqual(["fila:a", "cand:a"]);
     expect(repo.logs.some((l) => l.erro.includes("sheets caiu"))).toBe(true);
     repo.falhaAtualizarFila = false;
     const r = await run();
     expect(r.rascunhos).toBe(0);
     expect(gmail.rascunhos).toHaveLength(1);
     expect(repo.cands).toHaveLength(1);
+    expect(repo.fila[0]!.status).toBe("processada");
+  });
+
+  test("falha ao gravar a candidatura apos criar o rascunho: segunda execucao nao cria outro", async () => {
+    const { gmail, repo, run } = setup([fila("a")]);
+    repo.falhaAdicionarCand = 1;
+    await run();
+    expect(gmail.rascunhos).toHaveLength(1);
+    expect(repo.fila[0]!.status).toBe("enviando");
+    expect(repo.logs[0]!.erro).toContain("draftId=d1");
+    expect(repo.logs[0]!.erro).toContain("threadId=t1");
+    const r = await run();
+    expect(r.rascunhos).toBe(0);
+    expect(gmail.rascunhos).toHaveLength(1);
+    expect(repo.cands).toHaveLength(0);
+    expect(repo.logs.some((l) => l.erro.includes("manualmente"))).toBe(true);
+  });
+
+  test("falha ao reservar a Fila ('enviando') pula a linha sem tocar o Gmail", async () => {
+    const { gmail, repo, run } = setup([fila("a")]);
+    const orig = repo.atualizarFila.bind(repo);
+    repo.atualizarFila = async (id, p) => {
+      if (p.status === "enviando") throw new Error("sheets caiu");
+      return orig(id, p);
+    };
+    await run();
+    expect(gmail.rascunhos).toHaveLength(0);
+    expect(repo.cands).toHaveLength(0);
+    expect(repo.fila[0]!.status).toBe("novo");
+  });
+
+  test("linha 'aguardando semana' e aprovada em uma semana posterior", async () => {
+    const usadas = Array.from({ length: 30 }, (_, i) => cand(`u${i}`, { data: iso(new Date(agora.getTime() - DIA)) }));
+    const { gmail, repo } = setup([fila("a")], usadas);
+    const deps = { gmail, repo, pdf: async () => Buffer.from("pdf") };
+    await runSend({ ...deps, agora });
+    expect(repo.fila[0]!.status).toBe("aguardando semana");
+    const r = await runSend({ ...deps, agora: new Date(agora.getTime() + 7 * DIA) });
+    expect(r.rascunhos).toBe(1);
     expect(repo.fila[0]!.status).toBe("processada");
   });
 
@@ -259,6 +302,38 @@ describe("runSend: status e follow-up", () => {
     const r = await run();
     expect(r.followups).toBe(0);
     expect(gmail.rascunhos).toHaveLength(0);
+    expect(repo.cands[0]!.status).toBe("respondeu");
+  });
+
+  test("follow-up: falha ao gravar o id apos criar o rascunho nao gera segundo follow-up", async () => {
+    const { gmail, repo, run } = setup(
+      [fila("a", { status: "processada" })],
+      [cand("a", { followupEm: iso(new Date(agora.getTime() - 1000)) })],
+    );
+    gmail.threads.set("th-a", [{ deMim: true, data: new Date(agora.getTime() - 8 * DIA), messageId: "<m>" }]);
+    repo.falhaAtualizarCand = (p) => Boolean(p.idRascunhoFollowup && p.idRascunhoFollowup !== "pendente");
+    await run();
+    expect(gmail.rascunhos).toHaveLength(1);
+    expect(repo.cands[0]!.idRascunhoFollowup).toBe("pendente");
+    expect(repo.logs[0]!.erro).toContain("draftId=d1");
+    repo.falhaAtualizarCand = undefined;
+    const r = await run();
+    expect(r.followups).toBe(0);
+    expect(gmail.rascunhos).toHaveLength(1);
+  });
+
+  test("recrutador respondeu e o dono respondeu de volta antes da proxima execucao: 'respondeu', sem follow-up", async () => {
+    const { gmail, repo, run } = setup(
+      [fila("a", { status: "processada" })],
+      [cand("a", { followupEm: iso(new Date(agora.getTime() - DIA)) })],
+    );
+    gmail.threads.set("th-a", [
+      { deMim: true, data: new Date(agora.getTime() - 9 * DIA), messageId: "<m1>" },
+      { deMim: false, data: new Date(agora.getTime() - 5 * DIA), messageId: "<m2>" },
+      { deMim: true, data: new Date(agora.getTime() - 4 * DIA), messageId: "<m3>" },
+    ]);
+    const r = await run();
+    expect(r.followups).toBe(0);
     expect(repo.cands[0]!.status).toBe("respondeu");
   });
 

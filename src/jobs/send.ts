@@ -72,8 +72,15 @@ export async function runSend(deps: SendDeps): Promise<{ rascunhos: number; manu
     }
     return m;
   }
-  const ultimaDeMim = (ms: Mensagem[]) =>
-    ms.filter((m) => m.deMim).sort((a, b) => a.data.getTime() - b.data.getTime()).at(-1);
+  const deMimOrdenadas = (ms: Mensagem[]) =>
+    ms.filter((m) => m.deMim).sort((a, b) => a.data.getTime() - b.data.getTime());
+  const ultimaDeMim = (ms: Mensagem[]) => deMimOrdenadas(ms).at(-1);
+  // A reply is any message from someone else dated after the FIRST message from me (the application),
+  // even if I answered it afterwards.
+  const houveResposta = (ms: Mensagem[]) => {
+    const primeira = deMimOrdenadas(ms)[0];
+    return Boolean(primeira && ms.some((m) => !m.deMim && m.data.getTime() > primeira.data.getTime()));
+  };
 
   const [fila, cands] = await Promise.all([repo.lerFila(), repo.lerCandidaturas()]);
 
@@ -93,8 +100,7 @@ export async function runSend(deps: SendDeps): Promise<{ rascunhos: number; manu
       } else if (c.status === "enviada") {
         if (!c.idThread) continue;
         const ms = await thread(c.idThread);
-        const minha = ultimaDeMim(ms);
-        if (minha && ms.some((m) => !m.deMim && m.data.getTime() > minha.data.getTime())) {
+        if (houveResposta(ms)) {
           await repo.atualizarCandidatura(c.id, { status: "respondeu" });
           c.status = "respondeu";
         }
@@ -108,22 +114,37 @@ export async function runSend(deps: SendDeps): Promise<{ rascunhos: number; manu
   const filaPorId = new Map(fila.map((r) => [r.id, r]));
   for (const c of cands) {
     try {
-      if (c.status !== "enviada" || c.idRascunhoFollowup || !c.idThread) continue;
+      if (c.status !== "enviada" || !c.idThread) continue;
+      if (c.idRascunhoFollowup === "pendente") {
+        await registrarErro(
+          `followup ${c.id}: marcado 'pendente' (falha ao gravar apos criar o rascunho); nao sera recriado, confira os Rascunhos manualmente`,
+        );
+        continue;
+      }
+      if (c.idRascunhoFollowup) continue;
       const devido = new Date(c.followupEm);
       if (!c.followupEm || Number.isNaN(devido.getTime()) || devido.getTime() > agora.getTime()) continue;
       const ms = await thread(c.idThread);
       const minha = ultimaDeMim(ms);
       if (!minha) continue;
-      if (ms.some((m) => !m.deMim && m.data.getTime() > minha.data.getTime())) continue;
+      if (houveResposta(ms)) continue;
       const para = filaPorId.get(c.id)?.emailContato?.trim();
       if (!para) {
         await registrarErro(`followup ${c.id}: linha da Fila ou e-mail de contato nao encontrado, follow-up ignorado`);
         continue;
       }
+      // Reserve before touching Gmail: if this write fails nothing was drafted; if a later write fails,
+      // "pendente" keeps the next run from drafting a second follow-up.
+      await repo.atualizarCandidatura(c.id, { idRascunhoFollowup: "pendente" });
+      c.idRascunhoFollowup = "pendente";
       const { draftId } = await criarRascunhoFollowup(gmail, c, minha.messageId, para);
-      await repo.atualizarCandidatura(c.id, { idRascunhoFollowup: draftId });
-      c.idRascunhoFollowup = draftId;
       contagem.followups++;
+      try {
+        await repo.atualizarCandidatura(c.id, { idRascunhoFollowup: draftId });
+        c.idRascunhoFollowup = draftId;
+      } catch (e) {
+        throw new Error(`rascunho de follow-up criado (draftId=${draftId}) mas falha ao gravar: ${msg(e)}`);
+      }
     } catch (e) {
       await registrarErro(`followup ${c.id}: ${msg(e)}`);
     }
@@ -143,6 +164,12 @@ export async function runSend(deps: SendDeps): Promise<{ rascunhos: number; manu
         await repo.atualizarFila(row.id, { status: "processada" });
         continue;
       }
+      if (row.status === "enviando") {
+        await registrarErro(
+          `${row.id}: Fila em 'enviando' sem Candidaturas (falha apos tocar o Gmail); nao sera recriada, confira Rascunhos/Enviados manualmente`,
+        );
+        continue;
+      }
       const comEmail = Boolean(row.emailContato?.trim());
       if (comEmail && !row.mensagem.trim()) {
         await registrarErro(`${row.id}: aprovada com e-mail mas mensagem vazia, ignorada`);
@@ -154,8 +181,20 @@ export async function runSend(deps: SendDeps): Promise<{ rascunhos: number; manu
       }
 
       let cand: CandidaturaRow;
+      let gmailInfo = "";
       if (comEmail) {
-        const r = await criarRascunhoCandidatura(gmail, row, await pdf());
+        // Reserve before touching Gmail: if this write fails nothing was sent and the row is skipped.
+        const p = await pdf();
+        await repo.atualizarFila(row.id, { status: "enviando" });
+        let r: { draftId: string; threadId: string };
+        try {
+          r = await criarRascunhoCandidatura(gmail, row, p);
+        } catch (e) {
+          // Without direct send a failure here means no draft exists, so release the reservation.
+          if (!envioDireto()) await repo.atualizarFila(row.id, { status: row.status });
+          throw e;
+        }
+        gmailInfo = ` (draftId=${r.draftId}, threadId=${r.threadId})`;
         const enviada = envioDireto();
         cand = {
           id: row.id, data, empresa: row.empresa, titulo: row.titulo, canal: "email",
@@ -170,7 +209,11 @@ export async function runSend(deps: SendDeps): Promise<{ rascunhos: number; manu
           status: "aplicar manualmente", idRascunho: "", idThread: "", followupEm: "", idRascunhoFollowup: "",
         };
       }
-      await repo.adicionarCandidatura(cand);
+      try {
+        await repo.adicionarCandidatura(cand);
+      } catch (e) {
+        throw new Error(`falha ao gravar a candidatura${gmailInfo}: ${msg(e)}`);
+      }
       jaCandidatadas.add(row.id);
       restantes--;
       if (comEmail) contagem.rascunhos++;
