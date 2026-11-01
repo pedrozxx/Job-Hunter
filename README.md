@@ -41,7 +41,7 @@ Como o Gmail é pessoal, não dá para usar conta de serviço. O caminho é OAut
 2. Em "Tela de consentimento OAuth", preencha o básico (nome do app e seu e-mail de contato) e clique em "Publicar app", até o status ficar "Em produção". Não precisa de verificação do Google para uso pessoal. Não deixe em "Testando", porque nesse modo o refresh token expira em 7 dias.
 3. Em "Credenciais", crie um ID do cliente OAuth do tipo "App para computador". Guarde o client id e o client secret.
 
-O token gerado vale para os escopos `gmail.readonly`, `gmail.compose`, `spreadsheets` e `drive.readonly`. Nenhum deles envia e-mail sozinho: o `gmail.compose` cria rascunhos.
+O token gerado vale para os escopos `gmail.readonly`, `gmail.compose`, `spreadsheets` e `drive.readonly`. O `gmail.compose` deixa criar rascunho e também enviar, mas o projeto só cria rascunho. Nada sai até você mesmo enviar o rascunho no Gmail ou ligar o `ENVIO_DIRETO` (veja [Envio direto](#envio-direto)).
 
 ## 2. Gerar o refresh token
 
@@ -138,7 +138,7 @@ Alguns status que aparecem na coluna `status` da Fila:
 - `processada`: a candidatura já foi tratada.
 - `enviando`: veja logo abaixo.
 
-Na aba Candidaturas o `send` marca `enviada` sozinho quando o rascunho some e há uma mensagem sua na thread, e `respondeu` quando alguém responde. Depois de 7 dias sem resposta, ele cria um rascunho de follow-up na mesma thread. Os status `entrevista`, `recusada` e `sem resposta` você atualiza à mão.
+Na aba Candidaturas o `send` marca `enviada` sozinho quando o rascunho some e há uma mensagem sua na thread, e `respondeu` quando alguém responde depois da sua candidatura. Depois de 7 dias sem resposta, ele cria um rascunho de follow-up na mesma thread. Os status `entrevista`, `recusada` e `sem resposta` você atualiza à mão.
 
 ### Linha presa em "enviando" ou "pendente"
 
@@ -164,7 +164,7 @@ Eu só ligaria depois de uns bons ciclos de rascunho revisados à mão, porque a
 - Issues abertas de `frontendbr/vagas`, `backend-br/vagas` e `react-brasil/vagas`. Funciona hoje.
 - Alertas da Gupy: o parser ainda não existe. Ele depende de um e-mail de alerta real da Gupy para servir de modelo, e até agora a caixa só tinha e-mails de candidatura. Quando chegar um, o parser entra.
 
-Cada fonte roda isolada: se uma falha, o erro vai para a aba Log e as outras seguem.
+Cada fonte roda isolada: se uma falha, o erro vai para a aba Log e as outras seguem. Erro solto numa vaga ou num repositório não derruba nada. Mas se uma fonte cai inteira, se todas as vagas do dia falham no Claude, ou se no `send` uma candidatura aprovada com e-mail não sai (ou o PDF não baixa), o job grava o Log e termina com erro, para o GitHub te avisar.
 
 ## Fixtures de teste
 

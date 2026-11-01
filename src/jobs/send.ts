@@ -86,8 +86,8 @@ export async function runSend(
 
   const [fila, cands] = await Promise.all([repo.lerFila(), repo.lerCandidaturas()]);
 
-  // (1) Status updates. Only rows in "rascunho criado" or "enviada" are touched; statuses the owner
-  // set by hand (respondeu/entrevista/recusada/"") are never changed.
+  // (1) Status updates. Only rows in "rascunho criado" or "enviada" are touched; "respondeu" (set here)
+  // and the statuses the owner sets by hand (entrevista/recusada/sem resposta/"") are never changed.
   for (const c of cands) {
     try {
       if (c.status === "rascunho criado") {

@@ -119,7 +119,7 @@ Uma vaga passa se:
 
 **Aba Log:** data, job, fonte, coletadas, passaram_filtro, acima_corte e erro.
 
-O Pedro atualiza à mão os status `respondeu`, `entrevista` e `recusada`. O status `enviada` é marcado automaticamente pelo job `send` quando o rascunho deixa de existir e aparece uma mensagem enviada na thread.
+O status `enviada` é marcado automaticamente pelo job `send` quando o rascunho deixa de existir e aparece uma mensagem enviada na thread. O `respondeu` também é automático: o `send` marca quando chega na thread uma mensagem de outra pessoa depois da candidatura. O Pedro atualiza à mão os status `entrevista`, `recusada` e `sem resposta`.
 
 ## Jobs e agendamento
 
