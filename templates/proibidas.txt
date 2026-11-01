@@ -1,0 +1,11 @@
+# Uma expressão por linha, sem diferenciar maiúsculas de minúsculas.
+# Linhas com # são comentários. \uXXXX é lido como o caractere Unicode.
+apaixonado
+alavancar
+sinergia
+transformador
+fluido
+robusto
+otimizar
+faço a diferença
+\u2014

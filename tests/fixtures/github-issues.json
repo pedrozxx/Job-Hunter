@@ -1,0 +1,35 @@
+[
+  {
+    "number": 101,
+    "title": "[Empresa Ficticia] Desenvolvedor Frontend Júnior",
+    "html_url": "https://github.com/frontendbr/vagas/issues/101",
+    "body": "Vaga para atuar com React.\nEnvie seu CV para rh@empresa-ficticia.com com o assunto Frontend.",
+    "labels": [{ "name": "Remoto" }, { "name": "Júnior" }],
+    "created_at": "2026-10-10T12:00:00Z"
+  },
+  {
+    "number": 102,
+    "title": "Analista de Sistemas",
+    "html_url": "https://github.com/frontendbr/vagas/issues/102",
+    "body": "Trabalho na sede da empresa. Candidate-se pelo formulario.",
+    "labels": [{ "name": "Presencial" }, { "name": "São Paulo" }, { "name": "Pleno" }],
+    "created_at": "2026-10-11T12:00:00Z"
+  },
+  {
+    "number": 103,
+    "title": "Correcao de documentacao",
+    "html_url": "https://github.com/frontendbr/vagas/pull/103",
+    "body": "Ajuste no README.",
+    "labels": [],
+    "pull_request": { "url": "https://api.github.com/repos/frontendbr/vagas/pulls/103" },
+    "created_at": "2026-10-12T12:00:00Z"
+  },
+  {
+    "number": 104,
+    "title": "[Outra Ficticia] Desenvolvedor Backend",
+    "html_url": "https://github.com/frontendbr/vagas/issues/104",
+    "body": "Interessados: joao [at] outra-ficticia [dot] com",
+    "labels": [],
+    "created_at": "2026-10-13T12:00:00Z"
+  }
+]

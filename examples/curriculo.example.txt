@@ -1,0 +1,21 @@
+MARIA EXEMPLO
+Belém, PA | maria.exemplo@example.com | github.com/maria-exemplo
+
+OBJETIVO
+Estágio ou vaga júnior em desenvolvimento de software.
+
+FORMAÇÃO
+Bacharelado em Sistemas de Informação, Universidade Exemplo (previsão: dez/2027)
+
+HABILIDADES
+TypeScript, JavaScript, Node.js, React, SQL, Git, Docker (básico)
+
+PROJETOS
+- Agenda de estudos: aplicação web com React e Node.js, com autenticação e API REST.
+- Coletor de preços: script em TypeScript que consulta lojas e gera relatório diário.
+
+EXPERIÊNCIA
+Monitora de Programação I, Universidade Exemplo (2025): apoio a turmas de 40 alunos.
+
+IDIOMAS
+Português nativo, inglês intermediário.
