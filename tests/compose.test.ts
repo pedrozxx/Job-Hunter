@@ -50,6 +50,22 @@ describe("comporMensagem", () => {
     expect(r.mensagem).not.toMatch(/\{\{|\u2014/);
   });
 
+  test("travessão ou meia-risca no título ou na empresa vira hífen e não reprova a mensagem", async () => {
+    const llm = new LlmFalso();
+    llm.respostas = [TRECHO];
+    const r = await comporMensagem(
+      llm,
+      { ...vaga, titulo: "Dev Front \u2014 React \u2013 Remoto", empresa: "Acme \u2014 Brasil" },
+      pont,
+      perfil,
+      cv,
+    );
+    expect(llm.chamadas).toHaveLength(1);
+    expect(r.mensagem).toContain("Dev Front - React - Remoto");
+    expect(r.mensagem).toContain("Olá, pessoal da Acme - Brasil,");
+    expect(r.mensagem).not.toMatch(/[\u2013\u2014]/);
+  });
+
   test("júnior inclui disponibilidade, estágio não", async () => {
     const llm = new LlmFalso();
     llm.respostas = [TRECHO, TRECHO];

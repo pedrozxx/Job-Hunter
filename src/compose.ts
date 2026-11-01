@@ -50,12 +50,17 @@ function umaLinha(texto: string): string {
   return texto.replace(/\s+/g, " ").trim();
 }
 
+/** Travessão (U+2014) e meia-risca (U+2013) de anúncio viram hífen: a checagem reprova o travessão. */
+function semTravessao(texto: string): string {
+  return texto.replace(/[\u2013\u2014]/g, "-");
+}
+
 function montar(v: Vaga, trecho: string): string {
-  const empresa = umaLinha(v.empresa);
+  const empresa = semTravessao(umaLinha(v.empresa));
   const conhecida = empresa !== "" && empresa.toLowerCase() !== "desconhecida";
   const valores: Record<string, string> = {
     saudacao: conhecida ? `Olá, pessoal da ${empresa},` : "Olá,",
-    vaga: umaLinha(v.titulo),
+    vaga: semTravessao(umaLinha(v.titulo)),
     empresa: conhecida ? empresa : "",
     trecho,
     disponibilidade: v.nivel === "junior" ? DISPONIBILIDADE_JUNIOR : "",
