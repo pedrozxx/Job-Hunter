@@ -168,10 +168,10 @@ Os testes usam o Vitest.
 
 O CI roda `typecheck` e `test` em todo push.
 
-## Decisões em aberto, com responsável
+## Decisões registradas e pendências
 
 - Volume real das fontes: confirmado pelo `probe-sources.ts` (implementação).
-- Data de conclusão da faculdade do Pedro, porque vaga de estágio exige matrícula ativa. Se a formatura for perto de junho de 2027, o filtro passa a descartar estágios que comecem depois dessa data (Pedro).
+- Formatura do Pedro prevista entre junho e dezembro de 2027. Como vaga de estágio exige matrícula ativa, o Claude recebe essa data no perfil e penaliza estágio com duração prevista além da formatura ou com início depois de junho de 2027. Júnior continua sendo o foco principal.
 - Texto base da mensagem: o Pedro aprova o rascunho de `templates/base.md` antes do primeiro `send` real.
 
 ## Tarefas do Pedro antes da implementação
