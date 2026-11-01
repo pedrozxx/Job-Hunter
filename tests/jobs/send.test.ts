@@ -93,7 +93,7 @@ describe("runSend: novas aprovacoes", () => {
   test("aprovada com e-mail vira rascunho com a mensagem editada da Fila, sem chamar LLM", async () => {
     const { gmail, repo, run } = setup([fila("a")]);
     const r = await run();
-    expect(r).toEqual({ rascunhos: 1, manuais: 0, followups: 0 });
+    expect(r).toEqual({ rascunhos: 1, manuais: 0, followups: 0, falhaSistemica: false });
     expect(gmail.rascunhos[0]!.corpo).toBe("Mensagem editada a");
     expect(gmail.rascunhos[0]!.para).toBe("rh-a@acme.test");
     expect(repo.cands[0]).toMatchObject({
@@ -113,7 +113,7 @@ describe("runSend: novas aprovacoes", () => {
   test("aprovada sem e-mail vira 'aplicar manualmente'", async () => {
     const { gmail, repo, pdf, run } = setup([fila("a", { emailContato: null, mensagem: "" })]);
     const r = await run();
-    expect(r).toEqual({ rascunhos: 0, manuais: 1, followups: 0 });
+    expect(r).toEqual({ rascunhos: 0, manuais: 1, followups: 0, falhaSistemica: false });
     expect(gmail.rascunhos).toHaveLength(0);
     expect(pdf).not.toHaveBeenCalled();
     expect(repo.cands[0]).toMatchObject({ canal: "formulario", status: "aplicar manualmente", idRascunho: "" });
@@ -136,7 +136,7 @@ describe("runSend: novas aprovacoes", () => {
     const { gmail, run } = setup([fila("a"), fila("b", { emailContato: null })]);
     await run();
     const r2 = await run();
-    expect(r2).toEqual({ rascunhos: 0, manuais: 0, followups: 0 });
+    expect(r2).toEqual({ rascunhos: 0, manuais: 0, followups: 0, falhaSistemica: false });
     expect(gmail.rascunhos).toHaveLength(1);
   });
 
@@ -374,5 +374,34 @@ describe("gmailDryRun", () => {
     await runSend({ gmail: dry, repo: new RepoFalso([fila("a")]), pdf: async () => Buffer.alloc(0), agora });
     expect(real.enviados).toHaveLength(0);
     expect(dry.simulados.some((s) => s.startsWith("enviarRascunho"))).toBe(true);
+  });
+});
+
+describe("runSend: falha sistemica", () => {
+  test("falha ao baixar o PDF marca falha, com o erro no Log", async () => {
+    const { repo, pdf, run } = setup([fila("a")]);
+    pdf.mockRejectedValueOnce(new Error("drive fora do ar"));
+    expect((await run()).falhaSistemica).toBe(true);
+    expect(repo.logs.some((l) => l.erro.includes("drive fora do ar"))).toBe(true);
+  });
+
+  test("aprovada com e-mail que falha no Gmail marca falha", async () => {
+    const { gmail, run } = setup([fila("a")]);
+    gmail.criarRascunho = async () => { throw new Error("gmail recusou"); };
+    expect((await run()).falhaSistemica).toBe(true);
+  });
+
+  test("linhas puladas de proposito (mensagem vazia, presa em 'enviando') nao marcam falha", async () => {
+    const { repo, run } = setup([fila("a", { mensagem: "" }), fila("b", { status: "enviando" })]);
+    expect((await run()).falhaSistemica).toBe(false);
+    expect(repo.logs).toHaveLength(2);
+  });
+
+  test("erro isolado no follow-up nao marca falha", async () => {
+    const { gmail, repo, run } = setup([], [cand("a", { followupEm: iso(new Date(agora.getTime() - DIA)) })]);
+    gmail.threads.set("th-a", [{ deMim: true, data: new Date(agora.getTime() - 8 * DIA), messageId: "<m1>" }]);
+    repo.fila = [];
+    expect((await run()).falhaSistemica).toBe(false);
+    expect(repo.logs).toHaveLength(1);
   });
 });

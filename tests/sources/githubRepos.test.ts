@@ -62,6 +62,13 @@ describe("fetchGithubVagas", () => {
     expect(vagas.length).toBe(3 * (REPOS_VAGAS.length - 1));
   });
 
+  it("todos os repos falhando reporta cada um e lanca erro da fonte inteira", async () => {
+    const mockFetch = vi.fn(async () => falha(404)) as unknown as typeof fetch;
+    const onErro = vi.fn();
+    await expect(fetchGithubVagas(desde, mockFetch, onErro)).rejects.toThrow("nenhum repositório de vagas respondeu");
+    expect(onErro).toHaveBeenCalledTimes(REPOS_VAGAS.length);
+  });
+
   it("issue com link invalido e pulada e reportada", async () => {
     const corpo = JSON.stringify([
       { number: 1, title: "x", html_url: "nao-e-url", body: "", labels: [] },

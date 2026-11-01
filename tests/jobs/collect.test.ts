@@ -117,7 +117,7 @@ describe("runCollect", () => {
     expect(llm.haiku).toBe(2);
     expect(llm.sonnet).toBe(1);
     expect(logDe(repo, "github-repo")).toMatchObject({ coletadas: 2, passaramFiltro: 2, acimaCorte: 1 });
-    expect(r).toEqual({ coletadas: 2, filaNova: 1 });
+    expect(r).toEqual({ coletadas: 2, filaNova: 1, falhaSistemica: false });
   });
 
   test("vaga já vista não chama o Claude", async () => {
@@ -204,5 +204,55 @@ describe("runCollect", () => {
     await p;
     expect(repo.chamadasAdicionar).toBe(1);
     expect(repo.adicionadas).toHaveLength(3);
+  });
+});
+
+describe("runCollect: falha sistemica", () => {
+  const todosFalham: typeof fetch = (async () => new Response("{}", { status: 404 })) as typeof fetch;
+
+  test("fonte inteira fora do ar (Gmail) marca falha, depois de gravar o Log", async () => {
+    const gmail: GmailClient = { ...gmailVazio, buscar: async () => { throw new Error("gmail fora do ar"); } };
+    const { p, repo } = rodar({ issues: [issue(1, 80)], gmail });
+    expect((await p).falhaSistemica).toBe(true);
+    expect(logDe(repo, "gmail").erro).toContain("gmail fora do ar");
+  });
+
+  test("todos os repositorios do GitHub falhando marca falha", async () => {
+    const { p, repo } = rodar({ fetchFn: todosFalham });
+    expect((await p).falhaSistemica).toBe(true);
+    expect(logDe(repo, "github-repo").erro).toContain(REPOS_VAGAS[0]);
+  });
+
+  test("um repositorio falhando sozinho nao marca falha", async () => {
+    const { p } = rodar({ fetchFn: fetchCom([issue(1, 80)], REPOS_VAGAS[1]) });
+    expect((await p).falhaSistemica).toBe(false);
+  });
+
+  test("alerta do LinkedIn sem vagas reconhecidas nao conta como fonte fora do ar", async () => {
+    const gmail: GmailClient = {
+      ...gmailVazio,
+      buscar: async () => [{
+        id: "e1", threadId: "t1", from: "LinkedIn <jobalerts-noreply@linkedin.com>", subject: "Vagas",
+        date: agora, html: "<html><body><p>nada aqui</p></body></html>", text: "",
+      }],
+    };
+    const { p, repo } = rodar({ issues: [issue(1, 80)], gmail });
+    expect((await p).falhaSistemica).toBe(false);
+    expect(logDe(repo, "gmail").erro).toContain("Alerta sem vagas reconhecidas");
+  });
+
+  test("todas as chamadas ao Claude falhando marca falha", async () => {
+    const llm = new LlmFalso();
+    llm.gerar = async () => { throw new Error("claude-haiku-5-5: resposta cortada (stop_reason max_tokens, limite 16000)"); };
+    const { p, repo } = rodar({ issues: [issue(1, 80), issue(2, 90)], llm });
+    expect((await p).falhaSistemica).toBe(true);
+    expect(repo.logs.filter((l) => l.fonte === "score")).toHaveLength(2);
+  });
+
+  test("so uma vaga falhando no Claude nao marca falha; sem vagas tambem nao", async () => {
+    const { p } = rodar({ issues: [issue(1, "QUEBRA"), issue(2, 85)] });
+    expect((await p).falhaSistemica).toBe(false);
+    const vazio = rodar({ issues: [] });
+    expect((await vazio.p).falhaSistemica).toBe(false);
   });
 });

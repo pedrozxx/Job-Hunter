@@ -46,10 +46,12 @@ export function gmailDryRun(real: GmailClient): GmailClient & { simulados: strin
   };
 }
 
-export async function runSend(deps: SendDeps): Promise<{ rascunhos: number; manuais: number; followups: number }> {
+export async function runSend(
+  deps: SendDeps,
+): Promise<{ rascunhos: number; manuais: number; followups: number; falhaSistemica: boolean }> {
   const { gmail, repo, agora } = deps;
   const data = agora.toISOString();
-  const contagem = { rascunhos: 0, manuais: 0, followups: 0 };
+  const contagem = { rascunhos: 0, manuais: 0, followups: 0, falhaSistemica: false };
 
   async function registrarErro(erro: string): Promise<void> {
     try {
@@ -158,6 +160,7 @@ export async function runSend(deps: SendDeps): Promise<{ rascunhos: number; manu
   let restantes = vagasRestantesNaSemana(cands, agora);
 
   for (const row of aprovadas) {
+    const comEmail = Boolean(row.emailContato?.trim());
     try {
       // A crash between adicionarCandidatura and atualizarFila leaves the id in Candidaturas: just close the Fila row.
       if (jaCandidatadas.has(row.id)) {
@@ -170,7 +173,6 @@ export async function runSend(deps: SendDeps): Promise<{ rascunhos: number; manu
         );
         continue;
       }
-      const comEmail = Boolean(row.emailContato?.trim());
       if (comEmail && !row.mensagem.trim()) {
         await registrarErro(`${row.id}: aprovada com e-mail mas mensagem vazia, ignorada`);
         continue;
@@ -220,6 +222,8 @@ export async function runSend(deps: SendDeps): Promise<{ rascunhos: number; manu
       else contagem.manuais++;
       await repo.atualizarFila(row.id, { status: "processada" });
     } catch (e) {
+      // Aprovada com e-mail que falhou (PDF, Gmail ou planilha): o job termina com erro depois do Log.
+      if (comEmail) contagem.falhaSistemica = true;
       await registrarErro(`${row.id}: ${msg(e)}`);
     }
   }
@@ -247,6 +251,10 @@ async function main(): Promise<void> {
   console.log(
     `send: ${resultado.rascunhos} rascunhos, ${resultado.manuais} manuais, ${resultado.followups} follow-ups${dryRun ? " (dry-run)" : ""}`,
   );
+  if (resultado.falhaSistemica) {
+    console.error("send: falha sistemica (candidatura aprovada com e-mail falhou ou o PDF nao baixou), veja a aba Log");
+    process.exitCode = 1;
+  }
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

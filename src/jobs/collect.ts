@@ -33,7 +33,9 @@ function msg(e: unknown): string {
 
 type Contagem = { coletadas: number; passaramFiltro: number; acimaCorte: number; erros: string[] };
 
-export async function runCollect(deps: CollectDeps): Promise<{ coletadas: number; filaNova: number }> {
+export async function runCollect(
+  deps: CollectDeps,
+): Promise<{ coletadas: number; filaNova: number; falhaSistemica: boolean }> {
   const { gmail, repo, llm, fetchFn, perfil, curriculo, agora, desde } = deps;
   const data = agora.toISOString();
   const contagem: Record<"github-repo" | "gmail", Contagem> = {
@@ -41,6 +43,9 @@ export async function runCollect(deps: CollectDeps): Promise<{ coletadas: number
     gmail: { coletadas: 0, passaramFiltro: 0, acimaCorte: 0, erros: [] },
   };
   const errosScore: string[] = [];
+  // Falha sistêmica: uma fonte inteira fora do ar, ou todas as vagas falhando no Claude.
+  let fonteFora = false;
+  let tentativasLlm = 0;
 
   const [fila, cands, idsVistos] = await Promise.all([repo.lerFila(), repo.lerCandidaturas(), repo.idsVistos()]);
 
@@ -56,11 +61,13 @@ export async function runCollect(deps: CollectDeps): Promise<{ coletadas: number
     );
   } catch (e) {
     contagem["github-repo"].erros.push(msg(e));
+    fonteFora = true;
   }
   try {
     porFonte.gmail = await fetchGmailVagas(gmail, desde, (f, e) => contagem.gmail.erros.push(`${f}: ${msg(e)}`));
   } catch (e) {
     contagem.gmail.erros.push(msg(e));
+    fonteFora = true;
   }
 
   const novas: FilaRow[] = [];
@@ -73,6 +80,7 @@ export async function runCollect(deps: CollectDeps): Promise<{ coletadas: number
     for (const v of aprovadas) vistos.add(v.id);
 
     for (const v of aprovadas) {
+      tentativasLlm++;
       try {
         const p = await pontuar(llm, v, perfil, curriculo);
         if (p.nota < CORTE) continue;
@@ -132,6 +140,7 @@ export async function runCollect(deps: CollectDeps): Promise<{ coletadas: number
   return {
     coletadas: contagem["github-repo"].coletadas + contagem.gmail.coletadas,
     filaNova: novas.length,
+    falhaSistemica: fonteFora || (tentativasLlm > 0 && errosScore.length === tentativasLlm),
   };
 }
 
@@ -156,6 +165,10 @@ async function main(): Promise<void> {
     desde: new Date(agora.getTime() - HORAS_SOBREPOSICAO * 3600 * 1000),
   });
   console.log(`collect: ${resultado.coletadas} coletadas, ${resultado.filaNova} novas na Fila${dryRun ? " (dry-run)" : ""}`);
+  if (resultado.falhaSistemica) {
+    console.error("collect: falha sistemica (fonte inteira fora do ar ou todas as vagas falharam no Claude), veja a aba Log");
+    process.exitCode = 1;
+  }
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

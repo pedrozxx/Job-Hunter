@@ -108,12 +108,14 @@ export async function fetchGithubVagas(
 ): Promise<Vaga[]> {
   const coletadaEm = new Date().toISOString();
   const vagas: Vaga[] = [];
+  let reposComFalha = 0;
   for (const repo of REPOS_VAGAS) {
     let issues: Issue[];
     try {
       issues = await buscarRepo(repo, desde, fetchFn);
     } catch (e) {
       onErro?.(repo, e);
+      reposComFalha++;
       continue;
     }
     for (const issue of issues) {
@@ -125,5 +127,7 @@ export async function fetchGithubVagas(
       }
     }
   }
+  // Cada repositório já foi reportado em onErro; isto marca a fonte inteira como fora do ar.
+  if (reposComFalha === REPOS_VAGAS.length) throw new Error("nenhum repositório de vagas respondeu");
   return vagas;
 }
