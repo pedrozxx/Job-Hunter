@@ -19,6 +19,7 @@
     "vitest": "^5.0.5"
   },
   "dependencies": {
+    "cheerio": "^1.2.0",
     "googleapis": "^189.0.0"
   }
 }
