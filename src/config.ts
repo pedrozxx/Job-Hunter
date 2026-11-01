@@ -1,3 +1,5 @@
+import { usaExemplos } from "./secrets.js";
+
 export const CORTE = 60;
 export const TETO_SEMANAL = 30;
 export const FOLLOWUP_DIAS = 7;
@@ -37,4 +39,19 @@ export const MODELO_TEXTO = "claude-sonnet-5-5";
 
 export function envioDireto(): boolean {
   return process.env.ENVIO_DIRETO === "true";
+}
+
+function obrigatoria(variavel: string, exemplo: string): string {
+  const valor = process.env[variavel]?.trim();
+  if (valor) return valor;
+  if (usaExemplos()) return exemplo;
+  throw new Error(`Variável ${variavel} ausente`);
+}
+
+export function portfolioUrl(): string {
+  return obrigatoria("PORTFOLIO_URL", "https://example.com/portfolio");
+}
+
+export function nomeCandidato(): string {
+  return obrigatoria("NOME_CANDIDATO", "Maria Exemplo");
 }

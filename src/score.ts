@@ -74,7 +74,7 @@ function interpretar(texto: string): Pontuacao | null {
   return null;
 }
 
-function neutralizar(texto: string): string {
+export function neutralizar(texto: string): string {
   return texto.replace(/<\s*(\/?)\s*vaga\s*>/gi, "[$1vaga]");
 }
 

@@ -4,7 +4,7 @@ export type Perfil = { markdown: string; termosExclusao: string[] };
 
 const EXEMPLOS = new URL("../examples/", import.meta.url);
 
-function usaExemplos(): boolean {
+export function usaExemplos(): boolean {
   return process.env.NODE_ENV === "test" || process.argv.includes("--dry-run");
 }
 
