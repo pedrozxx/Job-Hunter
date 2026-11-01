@@ -249,6 +249,8 @@ describe("runSend: status e follow-up", () => {
     gmail.threads.set("th-a", [{ deMim: true, data: agora, messageId: "<m>" }]);
     await run();
     expect(repo.cands.map((c) => c.status)).toEqual(["rascunho criado", "rascunho criado"]);
+    // Thread de "b" sumiu (o cliente devolve [] no 404): fica como esta, sem erro no Log.
+    expect(repo.logs).toEqual([]);
   });
 
   test("status colocado a mao pelo dono nunca e alterado", async () => {

@@ -140,6 +140,15 @@ describe("GmailClient", () => {
     await expect(c.rascunhoExiste("d3")).rejects.toThrow("bad");
   });
 
+  it("mensagensDaThread retorna [] quando a thread nao existe mais (404) e repassa outros erros", async () => {
+    const api = fakeApi();
+    const c = makeGmailClient(asGmail(api), "eu@exemplo.com");
+    api.users.threads.get.mockRejectedValueOnce(Object.assign(new Error("nf"), { code: 404 }));
+    await expect(c.mensagensDaThread("t-sumiu")).resolves.toEqual([]);
+    api.users.threads.get.mockRejectedValueOnce(Object.assign(new Error("bad"), { code: 400 }));
+    await expect(c.mensagensDaThread("t1")).rejects.toThrow("bad");
+  });
+
   it("mensagensDaThread marca deMim pelo header From", async () => {
     const api = fakeApi();
     api.users.threads.get.mockResolvedValue({

@@ -170,7 +170,14 @@ export function makeGmailClient(api: gmail_v1.Gmail, meuEmail: string, opts: Ret
     },
 
     async mensagensDaThread(threadId) {
-      const res = await chamar(() => api.users.threads.get({ userId: "me", id: threadId, format: "metadata" }), opts);
+      let res: { data: gmail_v1.Schema$Thread };
+      try {
+        res = await chamar(() => api.users.threads.get({ userId: "me", id: threadId, format: "metadata" }), opts);
+      } catch (e) {
+        // Thread apagada (ex.: o dono descartou o rascunho): sem mensagens, não é erro.
+        if (statusDe(e) === 404) return [];
+        throw e;
+      }
       return (res.data.messages ?? []).map((m) => ({
         deMim: enderecoDe(header(m.payload ?? undefined, "From")) === eu,
         data: dataDe(m),
