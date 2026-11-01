@@ -8,6 +8,11 @@ on:
 permissions:
   contents: read
 
+# Nunca roda duas vezes ao mesmo tempo; a segunda espera a primeira terminar.
+concurrency:
+  group: collect
+  cancel-in-progress: false
+
 jobs:
   collect:
     runs-on: ubuntu-latest

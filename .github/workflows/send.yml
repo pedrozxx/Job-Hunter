@@ -8,6 +8,11 @@ on:
 permissions:
   contents: read
 
+# Nunca roda duas vezes ao mesmo tempo; a segunda espera a primeira terminar.
+concurrency:
+  group: send
+  cancel-in-progress: false
+
 jobs:
   send:
     runs-on: ubuntu-latest
@@ -20,15 +25,10 @@ jobs:
       - run: npm ci
       - run: npm run send
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           CURRICULO_PDF_DRIVE_ID: ${{ secrets.CURRICULO_PDF_DRIVE_ID }}
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
           GOOGLE_REFRESH_TOKEN: ${{ secrets.GOOGLE_REFRESH_TOKEN }}
           SHEET_ID: ${{ secrets.SHEET_ID }}
-          PERFIL_MD: ${{ secrets.PERFIL_MD }}
-          CURRICULO_TXT: ${{ secrets.CURRICULO_TXT }}
           MEU_EMAIL: ${{ secrets.MEU_EMAIL }}
-          PORTFOLIO_URL: ${{ secrets.PORTFOLIO_URL }}
           NOME_CANDIDATO: ${{ secrets.NOME_CANDIDATO }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
