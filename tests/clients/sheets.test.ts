@@ -169,4 +169,49 @@ describe("SheetsRepo", () => {
     await expect(makeSheetsRepo(f.api, "S").adicionarFila([fila()])).rejects.toThrow(/coletada_em/);
     await expect(makeSheetsRepo(f.api, "S").atualizarFila("a1", { mensagem: "x" })).rejects.toThrow(/mensagem/);
   });
+
+  it("leitura e idsVistos lancam se faltar coluna obrigatoria (nada de dedupe vazio silencioso)", async () => {
+    const semId = fakeApi({ Fila: [HEAD_FILA.filter((h) => h !== "id"), ], Candidaturas: [HEAD_CAND] });
+    const repo = makeSheetsRepo(semId.api, "S");
+    await expect(repo.idsVistos()).rejects.toThrow('Coluna "id" nao existe na aba Fila');
+    await expect(repo.lerFila()).rejects.toThrow('Coluna "id" nao existe na aba Fila');
+    const semDecisao = fakeApi({ Fila: [HEAD_FILA.filter((h) => h !== "decisao")] });
+    await expect(makeSheetsRepo(semDecisao.api, "S").lerFila()).rejects.toThrow('Coluna "decisao" nao existe na aba Fila');
+    const semStatus = fakeApi({ Candidaturas: [HEAD_CAND.filter((h) => h !== "status")] });
+    await expect(makeSheetsRepo(semStatus.api, "S").lerCandidaturas()).rejects.toThrow('Coluna "status" nao existe na aba Candidaturas');
+  });
+
+  it("ids com espaco sobrando sao aparados em idsVistos, leitura e atualizacao", async () => {
+    const f = fakeApi({ Fila: [HEAD_FILA, ["a1 ", ...Array(16).fill("")]], Candidaturas: [HEAD_CAND, [" c1"]] });
+    const repo = makeSheetsRepo(f.api, "S");
+    expect([...(await repo.idsVistos())].sort()).toEqual(["a1", "c1"]);
+    expect((await repo.lerFila())[0].id).toBe("a1");
+    await repo.atualizarFila("a1", { status: "processada" });
+    expect(f.tabs.Fila[1][HEAD_FILA.indexOf("status")]).toBe("processada");
+  });
+
+  it("status e canal de Candidaturas sao normalizados; valor desconhecido vira vazio sem lancar", async () => {
+    const f = fakeApi({ Candidaturas: [HEAD_CAND] });
+    const repo = makeSheetsRepo(f.api, "S");
+    await repo.adicionarCandidatura(cand({ id: "a" }));
+    await repo.adicionarCandidatura(cand({ id: "b" }));
+    f.tabs.Candidaturas[1][HEAD_CAND.indexOf("status")] = "Respondeu ";
+    f.tabs.Candidaturas[1][HEAD_CAND.indexOf("canal")] = " Email";
+    f.tabs.Candidaturas[2][HEAD_CAND.indexOf("status")] = "ghosted";
+    const [a, b] = await repo.lerCandidaturas();
+    expect(a).toMatchObject({ status: "respondeu", canal: "email" });
+    expect(b.status).toBe("");
+  });
+
+  it("coluna desconhecida no meio da Fila nao atrapalha leitura, append nem update", async () => {
+    const head = [...HEAD_FILA.slice(0, 5), "anotacao_pedro", ...HEAD_FILA.slice(5)];
+    const f = fakeApi({ Fila: [head] });
+    const repo = makeSheetsRepo(f.api, "S");
+    await repo.adicionarFila([fila()]);
+    expect(f.tabs.Fila[1][head.indexOf("anotacao_pedro")]).toBe("");
+    f.tabs.Fila[1][head.indexOf("anotacao_pedro")] = "ligar";
+    await repo.atualizarFila("a1", { nivel: "pleno", status: "processada" });
+    expect(f.tabs.Fila[1][head.indexOf("anotacao_pedro")]).toBe("ligar");
+    expect((await repo.lerFila())[0]).toMatchObject({ id: "a1", nivel: "pleno", status: "processada", nota: 80, mensagem: "Ola" });
+  });
 });

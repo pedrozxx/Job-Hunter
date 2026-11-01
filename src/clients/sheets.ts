@@ -16,12 +16,18 @@ export interface SheetsRepo {
 
 // "str": text, empty cell reads "". "nullstr": text, empty cell reads null.
 // "num": number, empty reads 0 (log columns are always filled).
-// "list": array joined by "; ". "decisao": trimmed, lowercased, unknown reads "".
-type Kind = "str" | "nullstr" | "num" | "list" | "decisao";
-type Col<T> = { header: string; campo: keyof T & string; kind: Kind };
+// "list": array joined by "; ". "id": text, trimmed. "enum": hand-edited by the owner, so read
+// trimmed and lowercased; a value outside `valores` reads "" (like an undecided decisao) and never crashes.
+type Kind = "str" | "nullstr" | "num" | "list" | "id" | "enum";
+type Col<T> = { header: string; campo: keyof T & string; kind: Kind; valores?: readonly string[] };
+const DECISOES = ["aprovar", "descartar"] as const;
+const CANAIS = ["email", "formulario"] as const;
+const STATUS_CAND = [
+  "rascunho criado", "aplicar manualmente", "enviada", "respondeu", "entrevista", "recusada", "sem resposta",
+] as const;
 
 export const COLUNAS_FILA: Col<FilaRow>[] = [
-  { header: "id", campo: "id", kind: "str" },
+  { header: "id", campo: "id", kind: "id" },
   { header: "coletada_em", campo: "coletadaEm", kind: "str" },
   { header: "fonte", campo: "fonte", kind: "str" },
   { header: "empresa", campo: "empresa", kind: "str" },
@@ -36,17 +42,17 @@ export const COLUNAS_FILA: Col<FilaRow>[] = [
   { header: "motivo", campo: "motivo", kind: "str" },
   { header: "falta", campo: "falta", kind: "list" },
   { header: "mensagem", campo: "mensagem", kind: "str" },
-  { header: "decisao", campo: "decisao", kind: "decisao" },
+  { header: "decisao", campo: "decisao", kind: "enum", valores: DECISOES },
   { header: "status", campo: "status", kind: "str" },
 ];
 
 export const COLUNAS_CAND: Col<CandidaturaRow>[] = [
-  { header: "id", campo: "id", kind: "str" },
+  { header: "id", campo: "id", kind: "id" },
   { header: "data", campo: "data", kind: "str" },
   { header: "empresa", campo: "empresa", kind: "str" },
   { header: "titulo", campo: "titulo", kind: "str" },
-  { header: "canal", campo: "canal", kind: "str" },
-  { header: "status", campo: "status", kind: "str" },
+  { header: "canal", campo: "canal", kind: "enum", valores: CANAIS },
+  { header: "status", campo: "status", kind: "enum", valores: STATUS_CAND },
   { header: "id_rascunho", campo: "idRascunho", kind: "str" },
   { header: "id_thread", campo: "idThread", kind: "str" },
   { header: "followup_em", campo: "followupEm", kind: "str" },
@@ -74,7 +80,7 @@ function paraCelula(v: unknown, kind: Kind): string | number {
   return String(v);
 }
 
-function deCelula(c: unknown, kind: Kind): unknown {
+function deCelula(c: unknown, kind: Kind, valores?: readonly string[]): unknown {
   const vazio = c === undefined || c === null || c === "";
   switch (kind) {
     case "num": {
@@ -86,10 +92,12 @@ function deCelula(c: unknown, kind: Kind): unknown {
       return vazio ? [] : String(c).split(";").map((x) => x.trim()).filter(Boolean);
     case "nullstr":
       return vazio ? null : String(c);
-    case "decisao": {
+    case "enum": {
       const t = vazio ? "" : String(c).trim().toLowerCase();
-      return t === "aprovar" || t === "descartar" ? t : "";
+      return valores?.includes(t) ? t : "";
     }
+    case "id":
+      return vazio ? "" : String(c).trim();
     default:
       return vazio ? "" : String(c);
   }
@@ -128,14 +136,14 @@ export function makeSheetsRepo(api: sheets_v4.Sheets, sheetId: string, opts: Ret
     return i;
   }
 
-  function parse<T>(t: Tabela, cols: Col<T>[]): T[] {
-    const idx = cols.map((c) => t.headers.indexOf(c.header));
+  function parse<T>(t: Tabela, cols: Col<T>[], aba: string): T[] {
+    const idx = cols.map((c) => indice(t.headers, c, aba));
     return t.linhas
       .filter((l) => l.some((c) => c !== "" && c !== undefined && c !== null))
       .map((l) => {
         const o: Record<string, unknown> = {};
         cols.forEach((c, k) => {
-          o[c.campo] = deCelula(idx[k] < 0 ? undefined : l[idx[k]], c.kind);
+          o[c.campo] = deCelula(l[idx[k]], c.kind, c.valores);
         });
         return o as T;
       });
@@ -147,7 +155,7 @@ export function makeSheetsRepo(api: sheets_v4.Sheets, sheetId: string, opts: Ret
   async function atualizar<T>(aba: string, cols: Col<T>[], id: string, p: Partial<T>): Promise<void> {
     const t = await ler(aba);
     const iId = indice(t.headers, { header: "id" }, aba);
-    const pos = t.linhas.findIndex((l) => String(l[iId] ?? "") === id);
+    const pos = t.linhas.findIndex((l) => String(l[iId] ?? "").trim() === id.trim());
     if (pos < 0) throw new Error(`id "${id}" nao encontrado na aba ${aba}`);
     const linhaNaPlanilha = pos + 2;
     const data: sheets_v4.Schema$ValueRange[] = [];
@@ -195,7 +203,7 @@ export function makeSheetsRepo(api: sheets_v4.Sheets, sheetId: string, opts: Ret
   }
 
   async function lerFila(): Promise<FilaRow[]> {
-    return parse<FilaRow>(await ler(ABAS.fila), COLUNAS_FILA).map((r) => ({
+    return parse<FilaRow>(await ler(ABAS.fila), COLUNAS_FILA, ABAS.fila).map((r) => ({
       ...r,
       descricao: "", // not stored in the sheet
       ...(r.nota === undefined ? { nota: undefined, motivo: undefined, atende: undefined, falta: undefined } : {}),
@@ -206,17 +214,19 @@ export function makeSheetsRepo(api: sheets_v4.Sheets, sheetId: string, opts: Ret
     lerFila,
     adicionarFila: (r) => adicionar(ABAS.fila, COLUNAS_FILA, r),
     atualizarFila: (id, p) => atualizar(ABAS.fila, COLUNAS_FILA, id, p),
-    lerCandidaturas: async () => parse<CandidaturaRow>(await ler(ABAS.candidaturas), COLUNAS_CAND),
+    lerCandidaturas: async () => parse<CandidaturaRow>(await ler(ABAS.candidaturas), COLUNAS_CAND, ABAS.candidaturas),
     adicionarCandidatura: (r) => adicionar(ABAS.candidaturas, COLUNAS_CAND, [r]),
     atualizarCandidatura: (id, p) => atualizar(ABAS.candidaturas, COLUNAS_CAND, id, p),
     log: (r) => adicionar(ABAS.log, COLUNAS_LOG, [r]),
     async idsVistos() {
       const [f, c] = await Promise.all([ler(ABAS.fila), ler(ABAS.candidaturas)]);
       const ids = new Set<string>();
-      for (const t of [f, c]) {
-        const i = t.headers.indexOf("id");
-        if (i < 0) continue;
-        for (const l of t.linhas) if (l[i] !== undefined && l[i] !== "") ids.add(String(l[i]));
+      for (const [t, aba] of [[f, ABAS.fila], [c, ABAS.candidaturas]] as const) {
+        const i = indice(t.headers, { header: "id" }, aba);
+        for (const l of t.linhas) {
+          const v = String(l[i] ?? "").trim();
+          if (v) ids.add(v);
+        }
       }
       return ids;
     },
