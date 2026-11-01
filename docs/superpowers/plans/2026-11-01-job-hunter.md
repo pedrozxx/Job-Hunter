@@ -470,7 +470,7 @@ test("PDF só é baixado se houver ao menos um rascunho a criar", ...);
 - Modify: `README.md`
 
 - [ ] **Step 1:** README com: o que o projeto faz (um parágrafo, com o diagrama da spec), como gerar credencial OAuth no Google Cloud (tipo "App para computador", tela de consentimento em modo teste com o próprio e-mail), rodar `scripts/google-auth.ts`, rodar `scripts/setup-sheet.ts`, lista de secrets com como gerar o base64 (`base64 -w0 perfil.md`), como rodar `probe-sources` e `--dry-run`, e a nota de que o projeto não faz scraping nem preenche formulários.
-- [ ] **Step 2: Verificação.** `npm test && npm run typecheck` passando; `grep -rn $'\u2014' src templates README.md` sem resultado.
+- [ ] **Step 2: Verificação.** `npm test && npm run typecheck` passando; `grep -rnP '\x{2014}' src templates README.md` (com `LC_ALL=C.UTF-8`) sem resultado.
 - [ ] **Step 3: Commit** `docs: README de configuração`.
 
 ---
