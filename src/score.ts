@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { LlmClient } from "./clients/llm.js";
-import { MODELO_NOTA } from "./config.js";
+import { MAX_TOKENS, MODELO_NOTA } from "./config.js";
 import type { Perfil } from "./secrets.js";
 import type { Pontuacao, Vaga } from "./types.js";
 
@@ -110,7 +110,9 @@ export async function pontuar(
       modelo: MODELO_NOTA,
       sistema: SISTEMA,
       usuario,
-      maxTokens: 600,
+      // Haiku 5.5 pensa por padrão e o pensamento conta no max_tokens: folga grande e esforço baixo.
+      maxTokens: MAX_TOKENS,
+      esforco: "low",
     });
     const p = interpretar(ultima);
     if (p) return p;

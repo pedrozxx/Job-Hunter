@@ -39,7 +39,8 @@ describe("comporMensagem", () => {
     llm.respostas = [TRECHO];
     const r = await comporMensagem(llm, vaga, pont, perfil, cv);
     expect(llm.chamadas[0].modelo).toBe("claude-sonnet-5-5");
-    expect(llm.chamadas[0].maxTokens).toBe(300);
+    expect(llm.chamadas[0].maxTokens).toBe(16000);
+    expect(llm.chamadas[0].esforco).toBe("low");
     expect(llm.chamadas[0].usuario).toContain("<vaga>");
     expect(r.mensagem).toContain("Olá, pessoal da Acme,");
     expect(r.mensagem).toContain("Estagiário Full Stack");

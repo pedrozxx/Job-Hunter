@@ -36,6 +36,8 @@ export const REPOS_VAGAS: string[] = [
 
 export const MODELO_NOTA = "claude-haiku-5-5";
 export const MODELO_TEXTO = "claude-sonnet-5-5";
+/** Teto por resposta (sem streaming). Inclui o pensamento; só o que é gerado é cobrado. */
+export const MAX_TOKENS = 16000;
 
 export function envioDireto(): boolean {
   return process.env.ENVIO_DIRETO === "true";

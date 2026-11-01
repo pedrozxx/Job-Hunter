@@ -38,7 +38,8 @@ describe("pontuar", () => {
     llm.respostas = [JSON.stringify(ok)];
     expect(await pontuar(llm, vaga, perfil, cv)).toEqual(ok);
     expect(llm.chamadas[0].modelo).toBe("claude-haiku-5-5");
-    expect(llm.chamadas[0].maxTokens).toBe(600);
+    expect(llm.chamadas[0].maxTokens).toBe(16000);
+    expect(llm.chamadas[0].esforco).toBe("low");
   });
 
   test("aceita JSON dentro de bloco ```json", async () => {

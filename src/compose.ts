@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import type { LlmClient } from "./clients/llm.js";
-import { MAX_PALAVRAS, MODELO_TEXTO, nomeCandidato, portfolioUrl } from "./config.js";
+import { MAX_PALAVRAS, MAX_TOKENS, MODELO_TEXTO, nomeCandidato, portfolioUrl } from "./config.js";
 import { carregarProibidas, checkMessage } from "./messageCheck.js";
 import { neutralizar } from "./score.js";
 import type { Perfil } from "./secrets.js";
@@ -84,7 +84,9 @@ export async function comporMensagem(
       modelo: MODELO_TEXTO,
       sistema: sistema(proibidas),
       usuario: usuario(v, p, perfil, curriculo, aviso),
-      maxTokens: 300,
+      // Sonnet 5.5 pensa por padrão e o pensamento conta no max_tokens: folga grande e esforço baixo.
+      maxTokens: MAX_TOKENS,
+      esforco: "low",
     });
     const trecho = umaLinha(bruto);
     const mensagem = montar(v, trecho);
