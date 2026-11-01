@@ -98,12 +98,20 @@ function assuntoMime(s: string): string {
   return palavras.map((w) => `=?UTF-8?B?${Buffer.from(w, "utf8").toString("base64")}?=`).join("\r\n ");
 }
 
+const ENDERECO = /^[^\s<>,;:"()[\]\\]+@[^\s<>,;:"()[\]\\]+$/;
+
+function nomeArquivoSeguro(nome: string): string {
+  return nome.replace(/[\r\n]/g, "").replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+}
+
 function montarMime(r: NovoRascunho, de: string): string {
+  if (!ENDERECO.test(r.para)) throw new Error("Destinatario invalido: precisa ser um unico endereco de e-mail");
   const cab = [`From: ${de}`, `To: ${r.para}`, `Subject: ${assuntoMime(r.assunto)}`, "MIME-Version: 1.0"];
   if (r.inReplyTo) cab.push(`In-Reply-To: ${r.inReplyTo}`, `References: ${r.inReplyTo}`);
   const corpo = quebrar(Buffer.from(r.corpo, "utf8").toString("base64"));
   const textoHdr = ["Content-Type: text/plain; charset=UTF-8", "Content-Transfer-Encoding: base64"];
   if (!r.anexo) return [...cab, ...textoHdr, "", corpo].join("\r\n");
+  const nome = nomeArquivoSeguro(r.anexo.nome);
   const b = `=_${randomBytes(12).toString("hex")}`;
   return [
     ...cab,
@@ -114,9 +122,9 @@ function montarMime(r: NovoRascunho, de: string): string {
     "",
     corpo,
     `--${b}`,
-    `Content-Type: application/pdf; name="${r.anexo.nome}"`,
+    `Content-Type: application/pdf; name="${nome}"`,
     "Content-Transfer-Encoding: base64",
-    `Content-Disposition: attachment; filename="${r.anexo.nome}"`,
+    `Content-Disposition: attachment; filename="${nome}"`,
     "",
     quebrar(r.anexo.pdf.toString("base64")),
     `--${b}--`,
@@ -172,7 +180,14 @@ export function makeGmailClient(api: gmail_v1.Gmail, meuEmail: string, opts: Ret
     },
 
     async enviarRascunho(draftId) {
-      await chamar(() => api.users.drafts.send({ userId: "me", requestBody: { id: draftId } }), opts);
+      // Sem retry: um 5xx apos o servidor ter enviado causaria envio duplicado.
+      try {
+        await api.users.drafts.send({ userId: "me", requestBody: { id: draftId } });
+      } catch (e) {
+        const status = statusDe(e);
+        if (e instanceof Error && status !== undefined) (e as { status?: number }).status = status;
+        throw e;
+      }
     },
 
     async mensagensDaThread(threadId) {

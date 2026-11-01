@@ -171,6 +171,37 @@ describe("GmailClient", () => {
     expect(api.users.drafts.send).toHaveBeenCalledWith({ userId: "me", requestBody: { id: "d1" } });
   });
 
+  it("enviarRascunho nao repete em 503", async () => {
+    const api = fakeApi();
+    api.users.drafts.send.mockRejectedValue(Object.assign(new Error("down"), { code: 503 }));
+    const c = makeGmailClient(asGmail(api), "eu@exemplo.com", { baseMs: 1 });
+    await expect(c.enviarRascunho("d1")).rejects.toThrow("down");
+    expect(api.users.drafts.send).toHaveBeenCalledTimes(1);
+  });
+
+  it("criarRascunho rejeita destinatario com CR/LF ou varios enderecos", async () => {
+    const api = fakeApi();
+    const c = makeGmailClient(asGmail(api), "eu@exemplo.com");
+    for (const para of ["a@b.com\r\nBcc: x@y.com", "a@b.com\nBcc: x@y.com", "a@b.com, c@d.com", "sem-arroba", "A <a@b.com>"]) {
+      await expect(c.criarRascunho({ para, assunto: "s", corpo: "c" })).rejects.toThrow("Destinatario invalido");
+    }
+    expect(api.users.drafts.create).not.toHaveBeenCalled();
+  });
+
+  it("criarRascunho sanitiza nome do anexo", async () => {
+    const api = fakeApi();
+    api.users.drafts.create.mockResolvedValue({ data: { id: "d", message: { threadId: "t" } } });
+    await makeGmailClient(asGmail(api), "eu@exemplo.com").criarRascunho({
+      para: "a@b.com",
+      assunto: "s",
+      corpo: "c",
+      anexo: { nome: 'cv"\r\nBcc: x@y.com.pdf', pdf: Buffer.from("x") },
+    });
+    const mime = decodeRaw(api.users.drafts.create.mock.calls[0][0].requestBody.message.raw);
+    expect(mime).toContain('filename="cv\\"Bcc: x@y.com.pdf"');
+    expect(mime).not.toMatch(/\r\nBcc:/);
+  });
+
   it("repete chamadas em erro 503 mapeado de code", async () => {
     const api = fakeApi();
     api.users.drafts.get
