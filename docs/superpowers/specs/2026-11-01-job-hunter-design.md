@@ -171,7 +171,7 @@ O CI roda `typecheck` e `test` em todo push.
 ## Decisões registradas e pendências
 
 - Volume real das fontes: confirmado pelo `probe-sources.ts` (implementação).
-- Formatura do Pedro prevista entre junho e dezembro de 2027. Como vaga de estágio exige matrícula ativa, o Claude recebe essa data no perfil e penaliza estágio com duração prevista além da formatura ou com início depois de junho de 2027. Júnior continua sendo o foco principal.
+- Formatura do Pedro prevista entre junho e dezembro de 2027. Como vaga de estágio exige matrícula ativa, o Claude recebe essa data no perfil e penaliza estágio com duração prevista além da formatura. Júnior continua sendo o foco principal.
 - Texto base da mensagem: o Pedro aprova o rascunho de `templates/base.md` antes do primeiro `send` real.
 
 ## Tarefas do Pedro antes da implementação
