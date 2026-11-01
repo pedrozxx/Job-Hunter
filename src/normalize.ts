@@ -44,3 +44,22 @@ export function inferModalidade(texto: string): Vaga["modalidade"] {
   if (/\b(presencial\w*|on-?site)\b/.test(t)) return "presencial";
   return "desconhecido";
 }
+
+const EMAIL_RE = /[A-Z0-9._%+-]+@[A-Z0-9-]+(?:\.[A-Z0-9-]+)+/gi;
+
+function ignorarEmail(email: string): boolean {
+  const [local = "", dominio = ""] = email.toLowerCase().split("@");
+  if (dominio === "github.com" || dominio.endsWith(".github.com")) return true;
+  return local.startsWith("noreply") || local.startsWith("no-reply");
+}
+
+export function extractEmail(texto: string): string | null {
+  const limpo = texto
+    .replace(/\s*[\[(]\s*at\s*[\])]\s*/gi, "@")
+    .replace(/\s*[\[(]\s*dot\s*[\])]\s*/gi, ".");
+  for (const m of limpo.matchAll(EMAIL_RE)) {
+    const email = m[0].replace(/[.]+$/, "");
+    if (!ignorarEmail(email)) return email;
+  }
+  return null;
+}
