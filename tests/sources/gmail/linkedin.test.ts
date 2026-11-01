@@ -62,5 +62,29 @@ describe("parseLinkedinAlert", () => {
     expect(vagas).toHaveLength(1);
     expect(vagas[0]).toMatchObject({ titulo: "Dev Jr", empresa: "Acme", local: "Belém (Presencial)", modalidade: "presencial" });
     expect(onErro).toHaveBeenCalledTimes(1);
+    expect(onErro.mock.calls[0]?.[0]).toContain("m1");
+  });
+
+  it("alerta sem vagas reconhecidas reporta exatamente um erro com o id do e-mail", () => {
+    const onErro = vi.fn();
+    const vagas = parseLinkedinAlert(email("<html><body><p>Nada de vagas aqui</p></body></html>"), onErro);
+    expect(vagas).toEqual([]);
+    expect(onErro).toHaveBeenCalledTimes(1);
+    expect(onErro.mock.calls[0]?.[0]).toContain("m1");
+    expect(String(onErro.mock.calls[0]?.[1])).toContain("markup mudou");
+  });
+
+  it("campos literais de itens do alerta 2", () => {
+    const vagas = parseLinkedinAlert(email(lerHtml(2)));
+    expect(vagas.find((v) => v.titulo === "Python Developer")).toMatchObject({
+      empresa: "BotCity",
+      local: "Brasil (Remoto)",
+      link: "https://linkedin.com/jobs/view/4484812021",
+    });
+    expect(vagas.find((v) => v.empresa === "Gelprime")).toMatchObject({
+      titulo: "Analista de Sistemas",
+      local: "Ibiporã, PR (Presencial)",
+      modalidade: "presencial",
+    });
   });
 });

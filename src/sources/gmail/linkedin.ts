@@ -14,6 +14,8 @@ export function parseLinkedinAlert(e: EmailBruto, onErro?: (fonte: string, err: 
   const coletadaEm = new Date().toISOString();
   const vistos = new Set<string>();
   const vagas: Vaga[] = [];
+  const tag = `gmail-linkedin:${e.id}`;
+  let erros = 0;
   $('a[href*="/jobs/view/"]').each((_, el) => {
     const titulo = limpar($(el).text());
     if (!titulo) return; // ancora do logo ou do cartao inteiro
@@ -41,8 +43,12 @@ export function parseLinkedinAlert(e: EmailBruto, onErro?: (fonte: string, err: 
         coletadaEm,
       });
     } catch (err) {
-      onErro?.("gmail-linkedin", err);
+      erros++;
+      onErro?.(tag, err);
     }
   });
+  if (vagas.length === 0 && erros === 0) {
+    onErro?.(tag, new Error(`Alerta sem vagas reconhecidas (markup mudou?) no e-mail ${e.id}`));
+  }
   return vagas;
 }
