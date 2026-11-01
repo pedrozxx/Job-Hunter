@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import type { gmail_v1 } from "googleapis";
-import { withRetry, type RetryOpts } from "../retry.js";
+import type { RetryOpts } from "../retry.js";
+import { anotarStatus, chamar, statusDe } from "./googleErrors.js";
 
 export type EmailBruto = {
   id: string;
@@ -30,27 +31,6 @@ export interface GmailClient {
 }
 
 type Part = gmail_v1.Schema$MessagePart;
-
-function statusDe(e: unknown): number | undefined {
-  const x = e as { status?: unknown; code?: unknown } | null;
-  const v = x?.status ?? x?.code;
-  const n = typeof v === "string" ? Number(v) : v;
-  return typeof n === "number" && Number.isFinite(n) ? n : undefined;
-}
-
-async function chamar<T>(fn: () => Promise<T>, opts: RetryOpts): Promise<T> {
-  return withRetry(async () => {
-    try {
-      return await fn();
-    } catch (e) {
-      const status = statusDe(e);
-      if (e instanceof Error && status !== undefined && (e as { status?: unknown }).status !== status) {
-        (e as { status?: number }).status = status;
-      }
-      throw e;
-    }
-  }, opts);
-}
 
 function header(p: Part | undefined, nome: string): string {
   const h = p?.headers?.find((x) => x.name?.toLowerCase() === nome.toLowerCase());
@@ -184,8 +164,7 @@ export function makeGmailClient(api: gmail_v1.Gmail, meuEmail: string, opts: Ret
       try {
         await api.users.drafts.send({ userId: "me", requestBody: { id: draftId } });
       } catch (e) {
-        const status = statusDe(e);
-        if (e instanceof Error && status !== undefined) (e as { status?: number }).status = status;
+        anotarStatus(e);
         throw e;
       }
     },

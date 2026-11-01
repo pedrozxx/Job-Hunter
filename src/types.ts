@@ -20,3 +20,41 @@ export type Pontuacao = {
   atende: string[];
   falta: string[];
 };
+
+export type Decisao = "aprovar" | "descartar" | "";
+
+export type StatusFila = "novo" | "semana cheia" | "aguardando semana" | "escrever manualmente" | "processada";
+
+export type FilaRow = Vaga & Partial<Pontuacao> & { mensagem: string; decisao: Decisao; status: StatusFila };
+
+export type StatusCand =
+  | "rascunho criado"
+  | "aplicar manualmente"
+  | "enviada"
+  | "respondeu"
+  | "entrevista"
+  | "recusada"
+  | "sem resposta";
+
+export type CandidaturaRow = {
+  id: string;
+  data: string;
+  empresa: string;
+  titulo: string;
+  canal: "email" | "formulario";
+  status: StatusCand;
+  idRascunho: string;
+  idThread: string;
+  followupEm: string;
+  idRascunhoFollowup: string;
+};
+
+export type LogRow = {
+  data: string;
+  job: "collect" | "send";
+  fonte: string;
+  coletadas: number;
+  passaramFiltro: number;
+  acimaCorte: number;
+  erro: string;
+};
