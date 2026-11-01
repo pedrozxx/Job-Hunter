@@ -24,7 +24,7 @@ export function vagaId(url: string): string {
   return createHash("sha1").update(normalizeLink(url)).digest("hex");
 }
 
-function semAcento(texto: string): string {
+export function semAcento(texto: string): string {
   return texto.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 }
 

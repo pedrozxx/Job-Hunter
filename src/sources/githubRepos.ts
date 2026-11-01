@@ -1,5 +1,5 @@
 import { CIDADES_OK, REPOS_VAGAS } from "../config.js";
-import { inferModalidade, inferNivel, extractEmail, normalizeLink, vagaId } from "../normalize.js";
+import { semAcento, inferModalidade, inferNivel, extractEmail, normalizeLink, vagaId } from "../normalize.js";
 import { withRetry } from "../retry.js";
 import type { Vaga } from "../types.js";
 
@@ -28,7 +28,7 @@ const CIDADES = [
 ];
 
 function norm(t: string): string {
-  return t.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
+  return semAcento(t).trim();
 }
 
 function nomesLabels(issue: Issue): string[] {
