@@ -352,7 +352,7 @@ test("célula de decisão com 'Aprovar ' (maiúscula/espaço) é lida como 'apro
 expect(checkMessage("palavra ".repeat(121), []).ok).toBe(false);
 expect(checkMessage("palavra ".repeat(120), []).ok).toBe(true);
 expect(checkMessage("Sou Apaixonado por código", ["apaixonado"]).ok).toBe(false); // case-insensitive
-expect(checkMessage("trabalho com React — e Node", ["—"]).ok).toBe(false);
+expect(checkMessage("trabalho com React \u2014 e Node", ["\u2014"]).ok).toBe(false);
 // compose
 test("usa claude-sonnet-5-5 e preenche o template", ...);       // mensagem contém empresa, título e trecho
 test("júnior inclui disponibilidade, estágio não", ...);
@@ -470,7 +470,7 @@ test("PDF só é baixado se houver ao menos um rascunho a criar", ...);
 - Modify: `README.md`
 
 - [ ] **Step 1:** README com: o que o projeto faz (um parágrafo, com o diagrama da spec), como gerar credencial OAuth no Google Cloud (tipo "App para computador", tela de consentimento em modo teste com o próprio e-mail), rodar `scripts/google-auth.ts`, rodar `scripts/setup-sheet.ts`, lista de secrets com como gerar o base64 (`base64 -w0 perfil.md`), como rodar `probe-sources` e `--dry-run`, e a nota de que o projeto não faz scraping nem preenche formulários.
-- [ ] **Step 2: Verificação.** `npm test && npm run typecheck` passando; `grep -rn $'—' src templates README.md` sem resultado.
+- [ ] **Step 2: Verificação.** `npm test && npm run typecheck` passando; `grep -rn $'\u2014' src templates README.md` sem resultado.
 - [ ] **Step 3: Commit** `docs: README de configuração`.
 
 ---
