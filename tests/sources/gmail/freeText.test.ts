@@ -27,6 +27,14 @@ describe("parseVagaManual", () => {
     });
   });
 
+  it("pula o e-mail do proprio dono (ex.: cabecalho de encaminhamento) e pega o do contato", () => {
+    const text = "---------- Forwarded message ---------\nDe: Eu <EU@example.com>\nhttps://empresa.example.com/v/2\ncontato rh@empresa.example.com";
+    const [v] = parseVagaManual({ ...base, text }, "eu@example.com");
+    expect(v?.emailContato).toBe("rh@empresa.example.com");
+    const [so] = parseVagaManual({ ...base, text: "De: eu@example.com\nhttps://empresa.example.com/v/3" }, "eu@example.com");
+    expect(so?.emailContato).toBeNull();
+  });
+
   it("sem link no corpo nao gera vaga", () => {
     expect(parseVagaManual({ ...base, text: "sem link" })).toEqual([]);
   });

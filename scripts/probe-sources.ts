@@ -21,7 +21,7 @@ async function main(): Promise<void> {
   const erros: string[] = [];
   const onErro = (fonte: string, e: unknown) => erros.push(`${fonte}: ${e instanceof Error ? e.message : String(e)}`);
 
-  const [doGmail, doGithub] = await Promise.all([fetchGmailVagas(cliente, desde, onErro), fetchGithubVagas(desde, fetch, onErro)]);
+  const [doGmail, doGithub] = await Promise.all([fetchGmailVagas(cliente, desde, onErro, meuEmail), fetchGithubVagas(desde, fetch, onErro)]);
   const todas = [...doGmail, ...doGithub];
   console.log(`Desde ${desde.toISOString()}`);
   console.log("Por fonte:", contar(todas, (v) => v.fonte));

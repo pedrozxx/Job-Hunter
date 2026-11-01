@@ -87,6 +87,7 @@ function rodar(o: { issues?: Issue[]; repo?: RepoFalso; llm?: LlmFalso; gmail?: 
   const llm = o.llm ?? new LlmFalso();
   const p = runCollect({
     gmail: o.gmail ?? gmailVazio,
+    meuEmail: "eu@exemplo.com",
     repo,
     llm,
     fetchFn: o.fetchFn ?? fetchCom(o.issues ?? []),
@@ -255,4 +256,18 @@ describe("runCollect: falha sistemica", () => {
     const vazio = rodar({ issues: [] });
     expect((await vazio.p).falhaSistemica).toBe(false);
   });
+});
+
+test("runCollect passa o e-mail do dono adiante: contato de '[vaga]' nunca e o proprio dono", async () => {
+  const gmail: GmailClient = {
+    ...gmailVazio,
+    buscar: async () => [{
+      id: "e2", threadId: "t2", from: "Eu <eu@exemplo.com>", subject: "[vaga] Desenvolvedor Junior React",
+      date: agora, html: "",
+      text: "De: eu@exemplo.com\nhttps://empresa.example.com/v/9 remoto NOTA:80\ncontato rh@empresa.example.com",
+    }],
+  };
+  const { p, repo } = rodar({ gmail });
+  await p;
+  expect(repo.adicionadas.map((r) => r.emailContato)).toEqual(["rh@empresa.example.com"]);
 });

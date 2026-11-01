@@ -11,9 +11,9 @@ function endereco(from: string): string {
   return (m?.[1] ?? from).trim().toLowerCase();
 }
 
-function rotear(e: EmailBruto, onErro?: (fonte: string, err: unknown) => void): Vaga[] {
+function rotear(e: EmailBruto, onErro?: (fonte: string, err: unknown) => void, meuEmail?: string): Vaga[] {
   if (REMETENTES_LINKEDIN.includes(endereco(e.from))) return parseLinkedinAlert(e, onErro);
-  if (/^\s*\[vaga\]/i.test(e.subject)) return parseVagaManual(e);
+  if (/^\s*\[vaga\]/i.test(e.subject)) return parseVagaManual(e, meuEmail);
   return [];
 }
 
@@ -21,6 +21,7 @@ export async function fetchGmailVagas(
   gmail: GmailClient,
   desde: Date,
   onErro?: (fonte: string, err: unknown) => void,
+  meuEmail?: string,
 ): Promise<Vaga[]> {
   const epoch = Math.floor(desde.getTime() / 1000);
   const emails = await gmail.buscar(
@@ -29,7 +30,7 @@ export async function fetchGmailVagas(
   const vagas: Vaga[] = [];
   for (const e of emails) {
     try {
-      vagas.push(...rotear(e, onErro));
+      vagas.push(...rotear(e, onErro, meuEmail));
     } catch (err) {
       onErro?.(`gmail:${e.id}`, err);
     }

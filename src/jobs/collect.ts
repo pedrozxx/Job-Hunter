@@ -16,6 +16,8 @@ import { vagasRestantesNaSemana } from "../weeklyCap.js";
 
 export type CollectDeps = {
   gmail: GmailClient;
+  /** Endereço do dono, pulado ao extrair o contato de e-mails "[vaga]". */
+  meuEmail: string;
   repo: SheetsRepo;
   llm: LlmClient;
   fetchFn: typeof fetch;
@@ -36,7 +38,7 @@ type Contagem = { coletadas: number; passaramFiltro: number; acimaCorte: number;
 export async function runCollect(
   deps: CollectDeps,
 ): Promise<{ coletadas: number; filaNova: number; falhaSistemica: boolean }> {
-  const { gmail, repo, llm, fetchFn, perfil, curriculo, agora, desde } = deps;
+  const { gmail, meuEmail, repo, llm, fetchFn, perfil, curriculo, agora, desde } = deps;
   const data = agora.toISOString();
   const contagem: Record<"github-repo" | "gmail", Contagem> = {
     "github-repo": { coletadas: 0, passaramFiltro: 0, acimaCorte: 0, erros: [] },
@@ -64,7 +66,12 @@ export async function runCollect(
     fonteFora = true;
   }
   try {
-    porFonte.gmail = await fetchGmailVagas(gmail, desde, (f, e) => contagem.gmail.erros.push(`${f}: ${msg(e)}`));
+    porFonte.gmail = await fetchGmailVagas(
+      gmail,
+      desde,
+      (f, e) => contagem.gmail.erros.push(`${f}: ${msg(e)}`),
+      meuEmail,
+    );
   } catch (e) {
     contagem.gmail.erros.push(msg(e));
     fonteFora = true;
@@ -154,8 +161,10 @@ async function main(): Promise<void> {
   const dryRun = process.argv.includes("--dry-run");
   const google = makeGoogleClients();
   const agora = new Date();
+  const meuEmail = env("MEU_EMAIL");
   const resultado = await runCollect({
-    gmail: makeGmailClient(google.gmail, env("MEU_EMAIL")),
+    gmail: makeGmailClient(google.gmail, meuEmail),
+    meuEmail,
     repo: makeSheetsRepo(google.sheets, env(dryRun ? "SHEET_ID_TEST" : "SHEET_ID")),
     llm: makeAnthropicClient(),
     fetchFn: fetch,

@@ -53,13 +53,15 @@ function ignorarEmail(email: string): boolean {
   return local.startsWith("noreply") || local.startsWith("no-reply");
 }
 
-export function extractEmail(texto: string): string | null {
+/** Primeiro e-mail do texto, pulando no-reply, GitHub e os endereços em `ignorar` (ex.: o do dono). */
+export function extractEmail(texto: string, ignorar: string[] = []): string | null {
+  const proprios = new Set(ignorar.map((e) => e.trim().toLowerCase()));
   const limpo = texto
     .replace(/\s*[\[(]\s*at\s*[\])]\s*/gi, "@")
     .replace(/\s*[\[(]\s*dot\s*[\])]\s*/gi, ".");
   for (const m of limpo.matchAll(EMAIL_RE)) {
     const email = m[0].replace(/[.]+$/, "");
-    if (!ignorarEmail(email)) return email;
+    if (!ignorarEmail(email) && !proprios.has(email.toLowerCase())) return email;
   }
   return null;
 }

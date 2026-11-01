@@ -6,7 +6,8 @@ import type { Vaga } from "../../types.js";
 const PREFIXO = /^\s*\[vaga\]\s*/i;
 const URL_RE = /https?:\/\/[^\s<>"')\]]+/;
 
-export function parseVagaManual(e: EmailBruto): Vaga[] {
+/** `meuEmail`: endereço do dono, que nunca é o contato da vaga (aparece em encaminhamentos). */
+export function parseVagaManual(e: EmailBruto, meuEmail?: string): Vaga[] {
   const corpo = e.text.trim() ? e.text : cheerio.load(e.html).text().replace(/[ \t]+/g, " ").trim();
   let url = corpo.match(URL_RE)?.[0];
   if (!url && e.html) url = cheerio.load(e.html)("a[href^=http]").first().attr("href");
@@ -24,7 +25,7 @@ export function parseVagaManual(e: EmailBruto): Vaga[] {
       nivel: inferNivel(titulo),
       descricao: corpo,
       link,
-      emailContato: extractEmail(corpo),
+      emailContato: extractEmail(corpo, meuEmail ? [meuEmail] : []),
       coletadaEm: new Date().toISOString(),
     },
   ];

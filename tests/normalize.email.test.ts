@@ -18,4 +18,7 @@ describe("extractEmail", () => {
   it("sem e-mail", () => {
     expect(extractEmail("sem email aqui")).toBeNull();
   });
+  it("ignora os enderecos pedidos, sem diferenciar maiusculas", () => {
+    expect(extractEmail("eu@exemplo.com e rh@empresa.com", ["EU@exemplo.com"])).toBe("rh@empresa.com");
+  });
 });
