@@ -34,6 +34,10 @@ describe("passaFiltro", () => {
   it("exige palavra inteira na cidade", () => {
     expect(passaFiltro({ ...base, modalidade: "presencial", local: "Belémzinho" }, perfil).ok).toBe(false);
   });
+  it("rejeita presencial ou hibrido sem local", () => {
+    expect(passaFiltro({ ...base, modalidade: "presencial", local: null }, perfil).ok).toBe(false);
+    expect(passaFiltro({ ...base, modalidade: "hibrido", local: null }, perfil).ok).toBe(false);
+  });
   it("rejeita pleno e aceita nível desconhecido", () => {
     expect(passaFiltro({ ...base, nivel: "pleno" }, perfil).ok).toBe(false);
     expect(passaFiltro({ ...base, nivel: "desconhecido" }, perfil).ok).toBe(true);

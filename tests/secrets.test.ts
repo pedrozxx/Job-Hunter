@@ -25,7 +25,8 @@ describe("carregarPerfil", () => {
       expect(() => carregarPerfil({})).toThrow(/PERFIL_MD/);
       expect(() => carregarCurriculo({})).toThrow(/CURRICULO_TXT/);
     } finally {
-      process.env.NODE_ENV = antigo;
+      if (antigo === undefined) delete process.env.NODE_ENV;
+      else process.env.NODE_ENV = antigo;
     }
   });
 });

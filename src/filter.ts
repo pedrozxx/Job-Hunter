@@ -28,7 +28,7 @@ export function passaFiltro(
     return { ok: false, motivo: "termo de exclusão no título" };
   }
   if (v.modalidade === "presencial" || v.modalidade === "hibrido") {
-    if (v.local && !contemAlgum(v.local, CIDADES_OK)) {
+    if (!v.local || !contemAlgum(v.local, CIDADES_OK)) {
       return { ok: false, motivo: `${v.modalidade} fora da região de Belém` };
     }
   }
