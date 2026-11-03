@@ -81,4 +81,4 @@ Isso vale também para todo texto que o sistema gera (`templates/`).
 
 - Testes primeiro (Vitest). Rode `npm test` e `npm run typecheck` antes de cada commit.
 - Nenhum dado pessoal real em código, testes ou fixtures. Fixtures de e-mail reais passam por `scripts/anonymize-fixture.ts`.
-- Nenhum caractere travessão (U+2014) em código ou texto. Use o escape `—` quando precisar referenciá-lo.
+- Nenhum caractere travessão (U+2014) em código ou texto. Use o escape `\u2014` quando precisar referenciá-lo.
